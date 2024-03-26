@@ -1,0 +1,62 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: myvm
+spec:
+  running: false
+  template:
+    spec:
+      accessCredentials:
+      - sshPublicKey:
+          propagationMethod:
+            configDrive: {}
+          source:
+            secret:
+              secretName: pub-keys
+      architecture: amd64
+      domain:
+        cpu:
+          cores: 8
+        devices:
+          autoattachGraphicsDevice: true
+          autoattachSerialConsole: true
+          disks:
+          - disk:
+              bus: virtio
+            name: harddrive
+          - disk:
+              bus: virtio
+            name: virtiocontainerdisk
+            bootOrder: 1
+          - disk:
+              bus: virtio
+            name: cloudinit
+        machine:
+          type: q35
+        resources:
+          limits:
+            memory: 16Gi
+          requests:
+            memory: 16Gi
+      volumes:
+      - containerDisk:
+          image: quay.io/containerdisks/ubuntu:22.04
+        name: virtiocontainerdisk
+      - emptyDisk:
+          capacity: 16Gi
+        name: harddrive
+      - cloudInitConfigDrive:
+          userData: |-
+            #cloud-config
+            disk_setup:
+              /dev/vda:
+                table_type: gpt
+                layout: True
+                overwrite: True
+            fs_setup:
+              - device: /dev/vda
+                partition: 1
+                filesystem: xfs
+            mounts:
+             - [ vda, /opt/data ]
+        name: cloudinit
